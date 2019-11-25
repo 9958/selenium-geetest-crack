@@ -86,7 +86,7 @@ public class TencentCrawler {
                 e.printStackTrace();
             }
         }
-            driver.quit();
+        driver.quit();
     }
     private static void downloadOriginalImg(int i, String originalUrl, Set<Cookie> cookieSet) throws IOException {
         CookieStore cookieStore = new BasicCookieStore();
@@ -142,18 +142,18 @@ public class TencentCrawler {
         BufferedImage fullBI = ImageIO.read(new File(BASE_PATH + "tencent-original" + i + ".png"));
         for(int w = 340 ; w < fullBI.getWidth() - 18; w++){
             int whiteLineLen = 0;
-            for (int h = 128; h < fullBI.getHeight() -200; h++){
+            for (int h = 0; h < fullBI.getHeight(); h++){
                 int[] fullRgb = new int[3];
                 fullRgb[0] = (fullBI.getRGB(w, h)  & 0xff0000) >> 16;
                 fullRgb[1] = (fullBI.getRGB(w, h)  & 0xff00) >> 8;
                 fullRgb[2] = (fullBI.getRGB(w, h)  & 0xff);
-                if ((Math.abs(fullRgb[0] - 0xff) + Math.abs(fullRgb[1] -0xff) + Math.abs(fullRgb[2] - 0xff)) < 40){
+                if (isBlack28(fullBI, w, h) && isWhite(fullBI, w, h)) {
                     whiteLineLen++;
                 } else {
-                    whiteLineLen = 0;
+//                    whiteLineLen = 0;
                     continue;
                 }
-                if (whiteLineLen >= 20){
+                if (whiteLineLen >= 50){
                     System.out.println("找到缺口成功，实际缺口位置x：" + w);
                     System.out.println("应该移动距离：" + (w/2 - START_DISTANCE));
                     //网页显示大小为实际图片大小的一半
@@ -164,6 +164,52 @@ public class TencentCrawler {
         }
         throw new RuntimeException("计算缺口位置失败");
     }
+    /**
+     * 当前点的后28个是不是黑色
+     *
+     * @return 后28个中有80%是黑色返回true, 否则返回false
+     */
+    private static boolean isBlack28(BufferedImage fullBI, int w, int h) {
+        int[] fullRgb = new int[3];
+        double blackNum = 0;
+        int num = Math.min(fullBI.getWidth() - w, 28);
+        for (int i = 0; i < num; i++) {
+            fullRgb[0] = (fullBI.getRGB(w + i, h) & 0xff0000) >> 16;
+            fullRgb[1] = (fullBI.getRGB(w + i, h) & 0xff00) >> 8;
+            fullRgb[2] = (fullBI.getRGB(w + i, h) & 0xff);
+            if (isBlack(fullRgb)) {
+                blackNum = blackNum + 1;
+            }
+        }
+
+        return blackNum / num > 0.8;
+    }
+
+    /**
+     * 当前点是不是白色
+     *
+     * @param fullBI
+     * @param w
+     * @param h
+     * @return
+     */
+    private static boolean isWhite(BufferedImage fullBI, int w, int h) {
+        int[] fullRgb = new int[3];
+        fullRgb[0] = (fullBI.getRGB(w, h) & 0xff0000) >> 16;
+        fullRgb[1] = (fullBI.getRGB(w, h) & 0xff00) >> 8;
+        fullRgb[2] = (fullBI.getRGB(w, h) & 0xff);
+
+        return isWhite(fullRgb);
+    }
+
+    private static boolean isWhite(int[] fullRgb) {
+        return (Math.abs(fullRgb[0] - 0xff) + Math.abs(fullRgb[1] - 0xff) + Math.abs(fullRgb[2] - 0xff)) < 125;
+    }
+
+    private static boolean isBlack(int[] fullRgb) {
+        return fullRgb[0] * 0.3 + fullRgb[1] * 0.6 + fullRgb[2] * 0.1 <= 125;
+    }
+
     public static List<MoveEntity> getMoveEntity(int distance){
         List<MoveEntity> list = new ArrayList<>();
         for (int i = 0 ;i < distance; i++){
