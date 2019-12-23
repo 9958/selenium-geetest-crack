@@ -34,6 +34,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -42,11 +43,12 @@ import java.util.concurrent.TimeUnit;
  */
 public class TencentCrawler {
     private static String BASE_PATH = "";
-    //小方块距离左边界距离
-    private static int START_DISTANCE = 22 + 16;
+    //小方块距离左边界距离，对应到原图的距离
+    private static int START_DISTANCE = (22 + 16) * 2;
+
     private static ChromeDriver driver = null;
     static {
-        System.setProperty("webdriver.chrome.driver", "/Users/wangyang/Downloads/chromedriver");
+        System.setProperty("webdriver.chrome.driver", "/Users/wangyang/chromedriver/chromedriver");
     }
     public static void main(String[] args) {
         crawl();
@@ -70,7 +72,8 @@ public class TencentCrawler {
                 String originalUrl = Jsoup.parse(driver.getPageSource()).select("[id=slideBg]").first().attr("src");
                 System.out.println(originalUrl);
                 downloadOriginalImg(i, originalUrl, driver.manage().getCookies());
-                int distance = calcMoveDistance(i);
+                int bgWrapWidth = driver.findElement(By.id("slideBgWrap")).getSize().getWidth();
+                int distance = calcMoveDistance(i, bgWrapWidth);
                 List<MoveEntity> list = getMoveEntity(distance);
                 element = driver.findElement(By.id("tcaptcha_drag_button"));
                 actions.clickAndHold(element).perform();
@@ -117,28 +120,19 @@ public class TencentCrawler {
                     .execute(new HttpGet(originalUrl))
                     .getEntity().getContent();
             FileUtils.copyInputStreamToFile(is, new File(BASE_PATH + "tencent-original" + i + ".png"));
-        } catch (IOException e) {
+        } catch (Exception e) {
             e.printStackTrace();
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-        } catch (KeyStoreException e) {
-            e.printStackTrace();
-        } catch (KeyManagementException e) {
-            e.printStackTrace();
-        } finally {
-            try {
-                is.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
         }
     }
+
     /**
-     * 如何判定找到目标滑块位置
-     * y轴上至少找到一条长度为30px的白线
+     * 计算小方块需要移动的距离
+     * @param i
+     * @param bgWrapWidth 背景图片div对应的width
+     * @return
      * @throws IOException
      */
-    public static int calcMoveDistance(int i) throws IOException {
+    public static int calcMoveDistance(int i, float bgWrapWidth) throws IOException {
         BufferedImage fullBI = ImageIO.read(new File(BASE_PATH + "tencent-original" + i + ".png"));
         for(int w = 340 ; w < fullBI.getWidth() - 18; w++){
             int whiteLineLen = 0;
@@ -155,9 +149,8 @@ public class TencentCrawler {
                 }
                 if (whiteLineLen >= 50){
                     System.out.println("找到缺口成功，实际缺口位置x：" + w);
-                    System.out.println("应该移动距离：" + (w/2 - START_DISTANCE));
-                    //网页显示大小为实际图片大小的一半
-                    return w/2 - START_DISTANCE;
+                    System.out.println("应该移动距离：" + (w - START_DISTANCE) / (fullBI.getWidth() / bgWrapWidth));
+                    return (int) ((w - START_DISTANCE) / (fullBI.getWidth() / bgWrapWidth));
                 }
             }
 
@@ -210,6 +203,11 @@ public class TencentCrawler {
         return fullRgb[0] * 0.3 + fullRgb[1] * 0.6 + fullRgb[2] * 0.1 <= 125;
     }
 
+    /**
+     * 默认移动算法
+     * @param distance
+     * @return
+     */
     public static List<MoveEntity> getMoveEntity(int distance){
         List<MoveEntity> list = new ArrayList<>();
         for (int i = 0 ;i < distance; i++){
@@ -222,33 +220,27 @@ public class TencentCrawler {
         }
         return list;
     }
-    static class MoveEntity{
-        private int x;
-        private int y;
-        private int sleepTime;//毫秒
 
-        public int getX() {
-            return x;
+    /**
+     * 新增的一种移动算法
+     * @param distance
+     * @return
+     */
+    public static List<MoveEntity> getMoveEntity1(int distance){
+        List<MoveEntity> list = new ArrayList<>();
+        for (int i = 0 ;i < distance / 5; i++){
+            MoveEntity moveEntity = new MoveEntity();
+            moveEntity.setX(5);
+            moveEntity.setY(ThreadLocalRandom.current().nextBoolean() ? 10 : -10);
+            moveEntity.setSleepTime(10);
+            list.add(moveEntity);
         }
 
-        public void setX(int x) {
-            this.x = x;
-        }
-
-        public int getY() {
-            return y;
-        }
-
-        public void setY(int y) {
-            this.y = y;
-        }
-
-        public int getSleepTime() {
-            return sleepTime;
-        }
-
-        public void setSleepTime(int sleepTime) {
-            this.sleepTime = sleepTime;
-        }
+        MoveEntity moveEntity = new MoveEntity();
+        moveEntity.setX(distance % 5);
+        moveEntity.setY(0);
+        moveEntity.setSleepTime(10);
+        list.add(moveEntity);
+        return list;
     }
 }
