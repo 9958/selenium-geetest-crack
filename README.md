@@ -1,3 +1,7 @@
+# 2019-12-23更新
+* 优化Tencent距离计算可能出错的问题，当bgWrap不是原图的1/2时.
+* 增加一种移动算法getMoveEntity1。如果小方块完全重合的情况报"拼图块半路丢了，再试一次吧"，可以尝试切换为getMoveEntity1。
+
 # 2019-04-16更新
 * 修复极验页面改版，这次采用极验官方的demo地址:https://www.geetest.com/demo/slide-bind.html
 * 截止2019-04-16，极验和腾讯的两个滑动验证码都是能保证比较高的成功率通过的
@@ -561,6 +565,3 @@
  
 >欢迎关注我个人微信公众号
 ![一个程序员日常分享，包括但不限于爬虫、Java后端技术，欢迎关注](https://raw.githubusercontent.com/wycm/md-image/master/2019-02-28/9.png) 
-
->欢迎加入我新开的知识星球（解答和分享各种爬虫&Java问题）
-![欢迎加入我新开的知识星球（解答和分享各种爬虫&Java问题](https://raw.githubusercontent.com/wycm/md-image/master/2019-03-14/6.png)  
